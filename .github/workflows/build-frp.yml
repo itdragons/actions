@@ -30,30 +30,30 @@ jobs:
       - name: Install build tools
         run: brew install make gcc git
           
-      - name: Prepare dependencies
+      - name: Prepare dependencies (Go Modules fix)
         run: |
-          # 设置可写的 GOPATH
-          export GOPATH=$HOME/go
-          mkdir -p $GOPATH/src/github.com/fatedier
-          cd $GOPATH/src/github.com/fatedier
+          # 进入FRP源码目录
+          cd frp-${{ inputs.version || '0.24.1' }}
           
-          git clone https://github.com/fatedier/kcp-go.git
-          cd kcp-go
-          git checkout cd167d2f15f4
-          cd ..
+          # 初始化Go模块
+          go mod init github.com/fatedier/frp
           
-          git clone https://github.com/fatedier/golib.git
-          cd golib
-          git checkout ff8cd814b049
+          # 替换不可用的依赖版本
+          go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
+          go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
           
+          # 下载依赖
+          go mod tidy
+          
+          # 验证依赖
+          go list -m all | grep fatedier
+
       - name: Build for darwin_arm64
         run: |
-          export GOPATH=$HOME/go
-          export GO111MODULE=off
+          cd frp-${{ inputs.version || '0.24.1' }}
           export GOOS=darwin
           export GOARCH=arm64
-          
-          cd frp-${{ inputs.version || '0.24.1' }}
+          export CGO_ENABLED=1
           make
           
       - name: Package binaries
