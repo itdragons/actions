@@ -28,8 +28,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           
-      - name: Install build tools
-        run: brew install make gcc wget tar
+      - name: Install essential build tools
+        run: |
+          brew update
+          brew install make gcc wget tar pkg-config
           
       - name: Download and extract FRP source
         run: |
@@ -41,12 +43,19 @@ jobs:
       - name: Prepare dependencies
         run: |
           cd frp-src
-          # 跳过go mod初始化（因为文件已存在）
-          # 直接替换依赖
-          go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
-          go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
-          go mod tidy
+          # 处理现有go.mod文件
+          if [ -f go.mod ]; then
+            echo "使用现有go.mod文件"
+            go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
+            go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
+          else
+            echo "初始化新的go.mod文件"
+            go mod init github.com/fatedier/frp
+            go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
+            go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
+          fi
           
+          go mod tidy
           echo "验证依赖关系:"
           go list -m all | grep fatedier || echo "无fatedier依赖"
           
