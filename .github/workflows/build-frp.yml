@@ -32,6 +32,15 @@ jobs:
         run: |
           brew update
           brew install make gcc wget tar pkg-config
+
+      - name: Debug environment
+        run: |
+          echo "系统信息:"
+          uname -a
+          echo "Go版本:"
+          go version
+          echo "环境变量:"
+          env | sort
           
       - name: Download and extract FRP source
         run: |
