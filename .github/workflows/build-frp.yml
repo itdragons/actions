@@ -32,12 +32,15 @@ jobs:
           
       - name: Prepare dependencies
         run: |
-          # 手动获取依赖
+          # 设置可写的 GOPATH
+          export GOPATH=$HOME/go
           mkdir -p $GOPATH/src/github.com/fatedier
           cd $GOPATH/src/github.com/fatedier
+          
           git clone https://github.com/fatedier/kcp-go.git
           cd kcp-go
           git checkout cd167d2f15f4
+          cd ..
           
           git clone https://github.com/fatedier/golib.git
           cd golib
@@ -45,11 +48,12 @@ jobs:
           
       - name: Build for darwin_arm64
         run: |
-          cd frp-${{ inputs.version || '0.24.1' }}
-          export GO111MODULE=off  # 禁用 Go modules
           export GOPATH=$HOME/go
+          export GO111MODULE=off
           export GOOS=darwin
           export GOARCH=arm64
+          
+          cd frp-${{ inputs.version || '0.24.1' }}
           make
           
       - name: Package binaries
