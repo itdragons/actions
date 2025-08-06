@@ -53,7 +53,7 @@ jobs:
           tar -czvf frp_${VERSION}_darwin_arm64.tar.gz frp_${VERSION}_darwin_arm64
           
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # 更新为 v4 版本
         with:
           name: frp_${{ inputs.version || '0.24.1' }}_darwin_arm64
           path: frp-${{ inputs.version || '0.24.1' }}/bin/frp_${{ inputs.version || '0.24.1' }}_darwin_arm64.tar.gz
