@@ -14,7 +14,7 @@ permissions:
 jobs:
   build_darwin_arm64:
     name: Build darwin_arm64 binaries
-    runs-on: macos-13
+    runs-on: macos-latest  # 使用最新macOS运行器
     env:
       GO_VERSION: '1.16'
       FRP_VERSION: ${{ inputs.version || '0.24.1' }}
@@ -32,41 +32,30 @@ jobs:
         run: |
           brew update
           brew install make gcc wget tar pkg-config
-
-      - name: Debug environment
-        run: |
-          echo "系统信息:"
-          uname -a
-          echo "Go版本:"
-          go version
-          echo "环境变量:"
-          env | sort
+          echo "已安装构建工具：make, gcc, wget, tar, pkg-config"
           
       - name: Download and extract FRP source
         run: |
           wget https://github.com/fatedier/frp/archive/refs/tags/v${FRP_VERSION}.tar.gz -O frp-source.tar.gz
           tar -xzf frp-source.tar.gz
           mv frp-${FRP_VERSION} frp-src
+          echo "解压后的目录结构："
           ls -la frp-src
           
       - name: Prepare dependencies
         run: |
           cd frp-src
-          # 处理现有go.mod文件
-          if [ -f go.mod ]; then
-            echo "使用现有go.mod文件"
-            go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
-            go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
-          else
-            echo "初始化新的go.mod文件"
+          echo "当前Go模块状态："
+          go mod why github.com/fatedier/kcp-go || echo "未初始化模块"
+          
+          # 智能处理go.mod
+          if [ ! -f go.mod ]; then
             go mod init github.com/fatedier/frp
-            go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
-            go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
           fi
           
+          go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
+          go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
           go mod tidy
-          echo "验证依赖关系:"
-          go list -m all | grep fatedier || echo "无fatedier依赖"
           
       - name: Build for darwin_arm64
         run: |
@@ -74,6 +63,8 @@ jobs:
           export GOOS=darwin
           export GOARCH=arm64
           export CGO_ENABLED=1
+          echo "开始构建，使用以下环境："
+          echo "GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=$CGO_ENABLED"
           make
           
       - name: Package binaries
@@ -83,6 +74,8 @@ jobs:
           mkdir -p frp_${FRP_VERSION}_darwin_arm64
           cp * frp_${FRP_VERSION}_darwin_arm64/
           tar -czvf ../../release/frp_${FRP_VERSION}_darwin_arm64.tar.gz frp_${FRP_VERSION}_darwin_arm64
+          echo "打包完成，文件列表："
+          ls -la ../../release
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
