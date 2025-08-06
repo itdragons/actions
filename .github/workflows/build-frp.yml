@@ -17,6 +17,7 @@ jobs:
     runs-on: macos-13
     env:
       GO_VERSION: '1.16'
+      FRP_VERSION: ${{ inputs.version || '0.24.1' }}
     
     steps:
       - name: Checkout repository
@@ -28,29 +29,30 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           
       - name: Install build tools
-        run: brew install make gcc
+        run: brew install make gcc wget tar
           
       - name: Download and extract FRP source
         run: |
-          VERSION=${{ inputs.version || '0.24.1' }}
-          wget https://github.com/fatedier/frp/archive/refs/tags/v${VERSION}.tar.gz
-          tar -xzf v${VERSION}.tar.gz
-          ls -la  # 列出文件确认解压成功
+          wget https://github.com/fatedier/frp/archive/refs/tags/v${FRP_VERSION}.tar.gz -O frp-source.tar.gz
+          tar -xzf frp-source.tar.gz
+          mv frp-${FRP_VERSION} frp-src
+          ls -la frp-src
           
       - name: Prepare dependencies
         run: |
-          cd frp-${{ inputs.version || '0.24.1' }}
-          # 初始化go.mod文件
-          go mod init github.com/fatedier/frp
-          # 替换不可用的依赖
+          cd frp-src
+          # 跳过go mod初始化（因为文件已存在）
+          # 直接替换依赖
           go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
           go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
-          # 下载依赖
           go mod tidy
+          
+          echo "验证依赖关系:"
+          go list -m all | grep fatedier || echo "无fatedier依赖"
           
       - name: Build for darwin_arm64
         run: |
-          cd frp-${{ inputs.version || '0.24.1' }}
+          cd frp-src
           export GOOS=darwin
           export GOARCH=arm64
           export CGO_ENABLED=1
@@ -58,14 +60,14 @@ jobs:
           
       - name: Package binaries
         run: |
-          VERSION=${{ inputs.version || '0.24.1' }}
-          cd frp-${VERSION}/bin
-          mkdir -p frp_${VERSION}_darwin_arm64
-          cp * frp_${VERSION}_darwin_arm64/
-          tar -czvf frp_${VERSION}_darwin_arm64.tar.gz frp_${VERSION}_darwin_arm64
+          mkdir -p release
+          cd frp-src/bin
+          mkdir -p frp_${FRP_VERSION}_darwin_arm64
+          cp * frp_${FRP_VERSION}_darwin_arm64/
+          tar -czvf ../../release/frp_${FRP_VERSION}_darwin_arm64.tar.gz frp_${FRP_VERSION}_darwin_arm64
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: frp_${{ inputs.version || '0.24.1' }}_darwin_arm64
-          path: frp-${{ inputs.version || '0.24.1' }}/bin/frp_${{ inputs.version || '0.24.1' }}_darwin_arm64.tar.gz
+          name: frp_${{ env.FRP_VERSION }}_darwin_arm64
+          path: release/frp_${{ env.FRP_VERSION }}_darwin_arm64.tar.gz
