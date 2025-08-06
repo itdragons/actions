@@ -14,9 +14,9 @@ permissions:
 jobs:
   build_darwin_arm64:
     name: Build darwin_arm64 binaries
-    runs-on: macos-13  # 必须使用 macOS 运行器
+    runs-on: macos-13
     env:
-      GO_VERSION: '1.16'  # FRP 0.24.1 需要 Go 1.16
+      GO_VERSION: '1.16'
     
     steps:
       - name: Checkout repository
@@ -28,21 +28,29 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           
       - name: Install build tools
-        run: brew install make gcc
+        run: brew install make gcc git
           
-      - name: Download FRP source
+      - name: Prepare dependencies
         run: |
-          VERSION=${{ inputs.version || '0.24.1' }}
-          wget https://github.com/fatedier/frp/archive/refs/tags/v${VERSION}.tar.gz
-          tar -xzf v${VERSION}.tar.gz
-          cd frp-${VERSION}
+          # 手动获取依赖
+          mkdir -p $GOPATH/src/github.com/fatedier
+          cd $GOPATH/src/github.com/fatedier
+          git clone https://github.com/fatedier/kcp-go.git
+          cd kcp-go
+          git checkout cd167d2f15f4
+          
+          git clone https://github.com/fatedier/golib.git
+          cd golib
+          git checkout ff8cd814b049
           
       - name: Build for darwin_arm64
         run: |
           cd frp-${{ inputs.version || '0.24.1' }}
+          export GO111MODULE=off  # 禁用 Go modules
+          export GOPATH=$HOME/go
           export GOOS=darwin
           export GOARCH=arm64
-          make all
+          make
           
       - name: Package binaries
         run: |
@@ -53,7 +61,7 @@ jobs:
           tar -czvf frp_${VERSION}_darwin_arm64.tar.gz frp_${VERSION}_darwin_arm64
           
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4  # 更新为 v4 版本
+        uses: actions/upload-artifact@v4
         with:
           name: frp_${{ inputs.version || '0.24.1' }}_darwin_arm64
           path: frp-${{ inputs.version || '0.24.1' }}/bin/frp_${{ inputs.version || '0.24.1' }}_darwin_arm64.tar.gz
