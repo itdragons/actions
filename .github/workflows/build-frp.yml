@@ -28,26 +28,26 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           
       - name: Install build tools
-        run: brew install make gcc git
+        run: brew install make gcc
           
-      - name: Prepare dependencies (Go Modules fix)
+      - name: Download and extract FRP source
         run: |
-          # 进入FRP源码目录
+          VERSION=${{ inputs.version || '0.24.1' }}
+          wget https://github.com/fatedier/frp/archive/refs/tags/v${VERSION}.tar.gz
+          tar -xzf v${VERSION}.tar.gz
+          ls -la  # 列出文件确认解压成功
+          
+      - name: Prepare dependencies
+        run: |
           cd frp-${{ inputs.version || '0.24.1' }}
-          
-          # 初始化Go模块
+          # 初始化go.mod文件
           go mod init github.com/fatedier/frp
-          
-          # 替换不可用的依赖版本
+          # 替换不可用的依赖
           go mod edit -replace github.com/fatedier/kcp-go=github.com/fatedier/kcp-go@v2.0.0-20171023144637-cd167d2f15f4
           go mod edit -replace github.com/fatedier/golib=github.com/fatedier/golib@v0.1.0
-          
           # 下载依赖
           go mod tidy
           
-          # 验证依赖
-          go list -m all | grep fatedier
-
       - name: Build for darwin_arm64
         run: |
           cd frp-${{ inputs.version || '0.24.1' }}
